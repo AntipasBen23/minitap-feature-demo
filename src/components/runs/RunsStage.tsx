@@ -2,12 +2,19 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { useDemoStore, demoDevices } from "@/lib/demo/store";
-import type { Run, RunStatus, Variant } from "@/lib/demo/types";
+import { useDemoStore } from "@/lib/demo/store";
+import type { DeviceTarget, Run, RunStatus, Variant } from "@/lib/demo/types";
 
 function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
+
+const DEVICES: DeviceTarget[] = [
+  { id: "pixel7", label: "Pixel 7", os: "Android 14" },
+  { id: "s22", label: "Samsung S22", os: "Android 13" },
+  { id: "iphone14", label: "iPhone 14", os: "iOS 17" },
+  { id: "iphonese", label: "iPhone SE", os: "iOS 16" },
+];
 
 export default function RunsStage() {
   const variants = useDemoStore((s) => s.variants);
@@ -37,11 +44,9 @@ export default function RunsStage() {
 
   function onRun() {
     simulateRunProgress();
-    // auto-select first retrying/failed-like, else first run
-    const next =
-      useDemoStore.getState().runs.find((r) => r.status === "retrying") ??
-      useDemoStore.getState().runs[0] ??
-      null;
+
+    const st = useDemoStore.getState();
+    const next = st.runs.find((r) => r.status === "retrying") ?? st.runs[0] ?? null;
     setSelectedRunId(next?.id ?? null);
   }
 
@@ -89,7 +94,7 @@ export default function RunsStage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
           <Stat label="Total" value={String(summary.total)} />
           <Stat label="Queued" value={String(summary.queued)} />
-          <Stat label="Running" value={String(summary.running)} />
+          <Stat label="Retrying" value={String(summary.retrying)} />
           <Stat label="Passed" value={String(summary.passed)} />
         </div>
 
@@ -100,12 +105,12 @@ export default function RunsStage() {
               Device matrix
             </div>
             <div className="text-[11px] text-white/45">
-              {demoDevices.length} targets
+              {DEVICES.length} targets
             </div>
           </div>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {demoDevices.map((d) => (
+            {DEVICES.map((d) => (
               <div
                 key={d.id}
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
@@ -243,9 +248,7 @@ export default function RunsStage() {
                     className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2"
                   >
                     <span className="text-xs text-white/75">{s}</span>
-                    <span className="text-[11px] text-white/45">
-                      placeholder
-                    </span>
+                    <span className="text-[11px] text-white/45">placeholder</span>
                   </div>
                 ))}
               </div>
@@ -268,7 +271,7 @@ function RunRow({
   active: boolean;
   onClick: () => void;
 }) {
-  const device = demoDevices.find((d) => d.id === run.deviceId);
+  const device = DEVICES.find((d) => d.id === run.deviceId);
   return (
     <button
       onClick={onClick}
@@ -285,8 +288,7 @@ function RunRow({
             {variant?.title ?? "Variant"} · {device?.label ?? run.deviceId}
           </div>
           <div className="mt-1 text-[11px] text-white/55">
-            {device?.os ?? ""}{" "}
-            {run.durationSec ? `· ${run.durationSec}s` : ""}
+            {device?.os ?? ""} {run.durationSec ? `· ${run.durationSec}s` : ""}
           </div>
         </div>
 
@@ -352,6 +354,7 @@ function summarizeRuns(runs: Run[]) {
   const total = runs.length;
   const queued = runs.filter((r) => r.status === "queued").length;
   const running = runs.filter((r) => r.status === "running").length;
+  const retrying = runs.filter((r) => r.status === "retrying").length;
   const passed = runs.filter((r) => r.status === "passed").length;
-  return { total, queued, running, passed };
+  return { total, queued, running, retrying, passed };
 }
